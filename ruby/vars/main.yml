@@ -1,0 +1,8 @@
+---
+ruby_major_version: 2.1
+ruby_minor_version: 1
+ruby_download: http://ftp.ruby-lang.org/pub/ruby/{{ruby_major_version}}/ruby-{{ruby_major_version}}.{{ruby_minor_version}}.tar.gz
+download_folder: /usr/src
+ruby_archive: "{{download_folder}}/ruby-{{ruby_major_version}}.{{ruby_minor_version}}.tar.gz"
+ruby_folder: ruby-{{ruby_major_version}}.{{ruby_minor_version}}
+re_install: "true"

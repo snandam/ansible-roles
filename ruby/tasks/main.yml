@@ -1,0 +1,85 @@
+---
+# Ansible playbook to install ruby and librarian-puppet on CentOS 6.*
+# http://www.bonusbits.com/wiki/HowTo:Install_Ruby_on_CentOS
+# Perform a dry run: ansible-playbook install_ruby.yml -v --ask-sudo-pass --check
+# Known Errors: /usr/local/lib/ruby/1.9.1/yaml.rb:84:in `<top (required)>': It seems your ruby installation is missing psych (for YAML output).
+# Above error doesn't seem to cause any issue with librarian-puppet, so ignoring for now
+
+##########
+#
+# Check if ruby is already installed. Might fail the first time so ignore the errors since ruby won't be available.
+# Idempotent :)
+#
+- name: Check the current ruby version
+  shell: "ruby --version"
+  register: ruby_version_check
+  ignore_errors: True
+
+- debug: msg="{{ ruby_version_check.stdout }}"
+  when: "'{{ruby_major_version}}.{{ruby_minor_version}}' not in '{{ruby_version_check.stdout}}'"
+
+##########
+#
+# Install dev tools and other dependencies to be able to compile ruby
+#
+- name: Install development tools
+  yum: name="@Development Tools" state=present
+  when: "'{{ruby_major_version}}.{{ruby_minor_version}}' not in '{{ruby_version_check.stdout}}'"
+
+- name: Install Others
+  yum: name=zlib,zlib-devel,curl,curl-devel,openssl-devel,httpd-devel,apr-devel,apr-util-devel,sqlite-devel,mysql-devel,libyaml,libyaml-devel
+  when: "'{{ruby_major_version}}.{{ruby_minor_version}}' not in '{{ruby_version_check.stdout}}'"
+
+##########
+#
+# Remove ruby if versions doesn't match
+#
+- name: Remove ruby if it's already installed
+  yum: name=ruby state=absent
+  when: "'{{ruby_major_version}}.{{ruby_minor_version}}' not in '{{ruby_version_check.stdout}}'"
+
+##########
+#
+# Download, compile and create symlink
+#
+- name: Download ruby
+  get_url: url="{{ruby_download}}" dest="{{download_folder}}"
+  when: "'{{ruby_major_version}}.{{ruby_minor_version}}' not in '{{ruby_version_check.stdout}}'"
+
+- name: Extract ruby archive
+  command: "tar -xzf {{ruby_archive}} -C {{download_folder}} creates={{download_folder}}/{{ruby_folder}}"
+  when: "'{{ruby_major_version}}.{{ruby_minor_version}}' not in '{{ruby_version_check.stdout}}'"
+
+- name: configure
+  command: ./configure
+  args:
+    chdir: "{{download_folder}}/{{ruby_folder}}"
+  when: "'{{ruby_major_version}}.{{ruby_minor_version}}' not in '{{ruby_version_check.stdout}}'"
+
+- name: make
+  command: make
+  args:
+    chdir: "{{download_folder}}/{{ruby_folder}}"
+  when: "'{{ruby_major_version}}.{{ruby_minor_version}}' not in '{{ruby_version_check.stdout}}'"
+
+- name: compile
+  command: make install
+  args:
+    chdir: "{{download_folder}}/{{ruby_folder}}"
+  when: "'{{ruby_major_version}}.{{ruby_minor_version}}' not in '{{ruby_version_check.stdout}}'"
+
+- name: Create symlink to ruby
+  file: "state=link src=/usr/local/bin/ruby dest=/usr/bin/ruby"
+  when: "'{{ruby_major_version}}.{{ruby_minor_version}}' not in '{{ruby_version_check.stdout}}'"
+
+##########
+#
+# Take care of the gem
+#
+- name: Remove gem if it's already installed
+  gem: name=rubygems state=absent
+  when: "'{{ruby_major_version}}.{{ruby_minor_version}}' not in '{{ruby_version_check.stdout}}'"
+
+- name: Create symlink to rubygem
+  file: "state=link src=/usr/src/{{ruby_folder}}/bin/gem dest=/usr/bin/gem"
+  when: "'{{ruby_major_version}}.{{ruby_minor_version}}' not in '{{ruby_version_check.stdout}}'"

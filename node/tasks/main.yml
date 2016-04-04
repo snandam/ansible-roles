@@ -1,0 +1,33 @@
+---
+    ##########
+    #
+    # Install node
+    #
+  - name: Install development tools/dependencies
+    yum: name="@Development Tools" state=present
+
+  - name: Download node
+    get_url: url="{{ node_download }}" dest="{{ download_folder }}"
+
+  - name: Extract node archive
+    unarchive: src="{{ download_folder }}/{{node_archive}}" dest="{{install_dir}}" copy=no
+
+  - name: Fix ownership
+    file: "state=directory path={{install_dir}}/{{node_path}} owner=root group=root recurse=yes"
+
+  - name: Create symlink for node
+    file: "state=link src={{install_dir}}/{{node_path}}/bin/node dest=/usr/bin/node"
+
+  - name: Create symlink for npm
+    file: "state=link src={{install_dir}}/{{node_path}}/bin/npm dest=/usr/bin/npm"
+
+  - name: set npm registry
+    command: "npm config set registry http://registry.npmjs.org/"
+
+  - name: Install additional defined npm global packages.
+    npm:
+      name: "{{ item.name }}"
+      version: "{{ item.version | default('') }}"
+      global: yes
+      state: latest
+    with_items: node_npm_global_packages
